@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Gemini Model Finder</title>
+    <style>
+        body { background: #1e1e1e; color: #fff; font-family: monospace; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        input { padding: 10px; width: 300px; border-radius: 5px; border: 1px solid #555; background: #333; color: white; }
+        button { padding: 10px 20px; background: #00aa78; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-weight: bold; }
+        button:hover { background: #00ffaa; color: black; }
+        #log { margin-top: 20px; width: 100%; max-width: 600px; background: #252525; padding: 15px; border-radius: 5px; white-space: pre-wrap; border: 1px solid #444; }
+        .model-name { color: #00ffaa; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>Gemini Model Finder</h2>
+    <input type="text" id="apiKey" value="" placeholder="API Key">
+    <button onclick="listModels()">List Available Models</button>
+    <div id="log">Waiting...</div>
+
+<script>
+    async function listModels() {
+        const key = document.getElementById('apiKey').value.trim();
+        const log = document.getElementById('log');
+        
+        log.innerText = "Querying Google servers...";
+        
+        // this endpoint asks google "What models can I use?"
+        const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.models) {
+                let output = "✅ VALID KEY! You have access to:\n\n";
+                // filter for models that support 'generateContent'
+                const chatModels = data.models.filter(m => m.supportedGenerationMethods.includes("generateContent"));
+                
+                chatModels.forEach(m => {
+                    output += `<span class="model-name">${m.name}</span>\n`;
+                    output += `   Description: ${m.displayName}\n\n`;
+                });
+                
+                log.innerHTML = output;
+            } else {
+                log.innerText = "❌ ERROR:\n" + JSON.stringify(data, null, 2);
+            }
+        } catch (e) {
+            log.innerText = "❌ NETWORK ERROR: " + e.message;
+        }
+    }
+</script>
+</body>
+</html>
