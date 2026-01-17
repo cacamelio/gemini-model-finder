@@ -1,56 +1,228 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Gemini Model Finder</title>
-    <style>
-        body { background: #1e1e1e; color: #fff; font-family: monospace; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        input { padding: 10px; width: 300px; border-radius: 5px; border: 1px solid #555; background: #333; color: white; }
-        button { padding: 10px 20px; background: #00aa78; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-weight: bold; }
-        button:hover { background: #00ffaa; color: black; }
-        #log { margin-top: 20px; width: 100%; max-width: 600px; background: #252525; padding: 15px; border-radius: 5px; white-space: pre-wrap; border: 1px solid #444; }
-        .model-name { color: #00ffaa; font-weight: bold; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gemini Model Finder</title>
+<style>
+body {
+    background-color: #0d1117;
+    color: #c9d1d9;
+    font-family: monospace;
+    padding: 20px;
+    text-align: center;
+}
+h2 {
+    border-bottom: 2px solid #238636;
+    padding-bottom: 10px;
+}
+.box {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+input {
+    padding: 10px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    color: white;
+    width: 300px;
+    border-radius: 5px;
+}
+button {
+    padding: 10px 20px;
+    background: #161b22;
+    color: #238636;
+    border: 1px solid #238636;
+    cursor: pointer;
+    border-radius: 5px;
+}
+button:hover {
+    background: #238636;
+    color: white;
+}
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.item {
+    background: #161b22;
+    border: 1px solid #30363d;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: left;
+}
+.top {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 10px;
+}
+.desc {
+    font-size: 12px;
+    color: #8b949e;
+    margin-bottom: 10px;
+}
+.nums {
+    font-size: 12px;
+    margin-bottom: 15px;
+}
+.buttons {
+    display: flex;
+    gap: 5px;
+}
+.btn2 {
+    flex: 1;
+    background: transparent;
+    border: 1px dashed #30363d;
+    color: #8b949e;
+    padding: 8px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+.btn2:hover {
+    color: #238636;
+    border-color: #238636;
+}
+#msg {
+    color: #8b949e;
+    margin-bottom: 20px;
+}
+</style>
 </head>
 <body>
 
-    <h2>Gemini Model Finder</h2>
-    <input type="text" id="apiKey" value="" placeholder="API Key">
-    <button onclick="listModels()">List Available Models</button>
-    <div id="log">Waiting...</div>
+<h2>Gemini Model Finder</h2>
+
+<div class="box">
+    <input type="password" id="key" placeholder="Enter API Key">
+    <button onclick="getData()">Fetch Models</button>
+    <button onclick="checkAll()">Test All</button>
+</div>
+
+<div id="msg">Waiting...</div>
+<div id="list" class="grid"></div>
 
 <script>
-    async function listModels() {
-        const key = document.getElementById('apiKey').value.trim();
-        const log = document.getElementById('log');
-        
-        log.innerText = "Querying Google servers...";
-        
-        // this endpoint asks google "What models can I use?"
-        const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
-
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data.models) {
-                let output = "✅ VALID KEY! You have access to:\n\n";
-                // filter for models that support 'generateContent'
-                const chatModels = data.models.filter(m => m.supportedGenerationMethods.includes("generateContent"));
-                
-                chatModels.forEach(m => {
-                    output += `<span class="model-name">${m.name}</span>\n`;
-                    output += `   Description: ${m.displayName}\n\n`;
-                });
-                
-                log.innerHTML = output;
-            } else {
-                log.innerText = "❌ ERROR:\n" + JSON.stringify(data, null, 2);
-            }
-        } catch (e) {
-            log.innerText = "❌ NETWORK ERROR: " + e.message;
-        }
+async function getData() {
+    var k = document.getElementById("key").value;
+    if(k == "") {
+        alert("Please put api key");
+        return;
     }
+    
+    document.getElementById("msg").innerText = "Loading...";
+    document.getElementById("list").innerHTML = "";
+
+    try {
+        var url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + k;
+        var r = await fetch(url);
+        var d = await r.json();
+        
+        if(d.error) {
+            alert(d.error.message);
+            return;
+        }
+
+        var mods = d.models.filter(function(x) {
+            return x.supportedGenerationMethods.includes("generateContent");
+        });
+
+        document.getElementById("msg").innerText = "Found " + mods.length + " models";
+
+        for(var i=0; i<mods.length; i++) {
+            makeDiv(mods[i]);
+        }
+    } catch(err) {
+        alert("Error: " + err);
+    }
+}
+
+function makeDiv(m) {
+    var name = m.name.replace("models/", "");
+    var ver = m.version || "1.0";
+    var desc = m.description || "No desc";
+    var input = m.inputTokenLimit || 0;
+    var output = m.outputTokenLimit || 0;
+
+    var html = "";
+    html += '<div class="item" id="card-'+name+'">';
+    html += '<div class="top"><span>' + name + '</span><span>' + ver + '</span></div>';
+    html += '<div class="desc">' + desc + '</div>';
+    html += '<div class="nums">In: ' + input + ' / Out: ' + output + '</div>';
+    html += '<div class="buttons">';
+    html += '<a href="https://ai.google.dev/gemini-api/docs/models/gemini" target="_blank" class="btn2">Specs</a>';
+    html += '<button class="btn2 testbtn" onclick="doTest(\'' + name + '\', this)">Test</button>';
+    html += '</div></div>';
+
+    document.getElementById("list").innerHTML += html;
+}
+
+async function doTest(name, btn) {
+    var k = document.getElementById("key").value;
+    var oldText = btn.innerText;
+    
+    btn.innerText = "...";
+    btn.disabled = true;
+
+    try {
+        var url = "https://generativelanguage.googleapis.com/v1beta/models/" + name + ":generateContent?key=" + k;
+        var payload = { contents: [{ parts: [{ text: "hi" }] }] };
+        
+        var r = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        var d = await r.json();
+
+        if(d.error) {
+            btn.innerText = "Fail";
+            btn.style.color = "red";
+        } else {
+            btn.innerText = "Work";
+            btn.style.color = "#238636";
+        }
+    } catch(e) {
+        console.log(e);
+        btn.innerText = "Error";
+    }
+    
+    setTimeout(function() {
+        btn.disabled = false;
+        if(btn.innerText == "Fail") btn.innerText = "Retry";
+    }, 2000);
+}
+
+async function checkAll() {
+    var k = document.getElementById("key").value;
+    if(k == "") return;
+    
+    var cards = document.getElementsByClassName("item");
+    if(cards.length == 0) {
+        alert("Click fetch first");
+        return;
+    }
+
+    for(var i=0; i<cards.length; i++) {
+        var name = cards[i].id.replace("card-", "");
+        var b = cards[i].getElementsByClassName("testbtn")[0];
+        
+        document.getElementById("msg").innerText = "Testing " + (i+1) + " of " + cards.length;
+        
+        await doTest(name, b);
+    }
+    
+    document.getElementById("msg").innerText = "Done testing";
+}
 </script>
+
 </body>
 </html>
